@@ -1,0 +1,64 @@
+<html>
+
+<head>
+
+    <style>
+        img {
+            height: 500px
+        }
+        
+        canvas {
+            border: red solid 2px;
+        }
+    </style>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
+</head>
+
+
+
+<body>
+
+    <img id="image" src="test.jpeg">
+
+    <canvas id="canvas" height="500" width="500"></canvas>
+
+
+
+
+
+    <script>
+        var model
+        var test_input
+
+        tf.loadGraphModel("https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1", {
+            fromTFHub: true
+        }).then(function(m) {
+            console.log('loaded model')
+            model = m
+            const model_shape = model.inputs[0].shape
+            console.log('model input shape', model_shape)
+            test_input = tf.randomNormal([1, model_shape[1], model_shape[2], model_shape[3]])
+        })
+
+        // render image to canvas
+        var c = document.getElementById("canvas");
+        var ctx = c.getContext("2d");
+        var img = document.getElementById("image");
+        // img.crossOrigin = "Anonymous";
+        ctx.drawImage(img, 0, 0, c.height, c.width);
+
+        // create matrix of images
+        const canvas_shape = [500, 500]
+        var data = ctx.getImageData(0, 0, 50, 50)
+        var frame_tensor = tf.browser.fromPixels(data)
+
+
+
+        // imput shape = [-1, 299, 299, 3]
+    </script>
+
+</body>
+
+</html>
