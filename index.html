@@ -65,35 +65,78 @@
 
             const total_frames = image_columns * image_rows
 
-            const frames_buffer = tf.buffer([total_frames, ...frame_shape, 3])
+            // const frames_buffer = tf.buffer([total_frames, ...frame_shape, 3])
 
             // const frames = tf.zeros([total_frames, ...frame_shape, 3])
 
-            console.log('frames shape', frames_buffer.shape)
+            // console.log('frames shape', frames_buffer.shape)
 
-            var count = 0
+            var _prev = tf.zeros([50,50,3])
+            var tensors = []
             for (let i = 0; i < image_columns; i++) {
 
                 for (let j = 0; j < image_rows; j++) {
 
                     const data = ctx.getImageData(i * stride, j * stride, ...frame_shape)
                     const frame_tensor = tf.browser.fromPixels(data)
-                    frames_buffer[count] = frame_tensor
+                    tensors.push(frame_tensor)
+                    // confirm that all frames ar different
+                    console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
+                    console.log('simgle fraem chekc sum', frame_tensor.sum().dataSync())
 
+                    // frames_buffer.set(frame_tensor, count,  )
+
+                    _prev = frame_tensor
+                    // count++
                 }
-                count++
+                
             }
 
-            const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
+            
+            const frames = tf.stack(tensors)
+            const output_tensor = tf.image.resizeBilinear(frames, [model_shape[1], model_shape[2]] )
+            // const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
+
+            // console.log('frames bufer', frames_buffer.toTensor().sum().dataSync())
+            console.log('ot check sum', output_tensor.sum().dataSync())
+            const image_input_data = output_tensor.dataSync()
+            console.log('see first 2 input image data')
+            console.log(image_input_data.slice(0, 100))
+            console.log(image_input_data.slice(256*256*3, (256*256*3)+100))
 
             
 
-            // output_tensor.print()
+            const comparision_vector = tf.ones([256])
 
-            const comparision_vector = tf.randomNormal([256])
+            console.log('comp vector', comparision_vector.dataSync())
 
             const prediction = model.predict(output_tensor)
-            console.log(prediction)
+
+            console.log('pred', prediction.dataSync())
+
+
+            // const loss = tf.losses.cosineDistance(comparision_vector.broadcastTo([100,256]), prediction, axis=0, reduction=null) 
+            // console.log('loss', loss.dataSync())
+
+
+            // console.log('quick loss', tf.losses.absoluteDifference(prediction, ))
+
+            // // perform similarity map calucaltion
+
+            console.log('prediction 1' ,prediction.dataSync().slice(0, 30))
+            console.log('prediction 2' ,prediction.dataSync().slice(256, 256+30))
+
+            const dot_product = tf.dot(prediction, comparision_vector)
+            console.log(dot_product.dataSync())
+            // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
+            // const cosine_distance = dot_product.div(abs_product)
+            // console.log(cosine_distance)
+
+            // const similarity_map = cosine_distance.reshape([image_columns, image_rows])
+
+            // console.log('sim map', similarity_map.dataSync())
+
+
 
             return output_tensor
         }
