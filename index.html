@@ -6,7 +6,7 @@
         img {
             height: 500px
         }
-        
+
         canvas {
             border: red solid 2px;
         }
@@ -20,9 +20,11 @@
 
 <body>
 
-    <img id="image" src="test.jpeg">
+    <img id="image" src="test_image.png">
 
     <canvas id="canvas" height="500" width="500"></canvas>
+
+    <button onclick="create_image_matrix()">create matrix plane </button>
 
 
 
@@ -31,13 +33,14 @@
     <script>
         var model
         var test_input
+        var model_shape
 
         tf.loadGraphModel("https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1", {
             fromTFHub: true
-        }).then(function(m) {
+        }).then(function (m) {
             console.log('loaded model')
             model = m
-            const model_shape = model.inputs[0].shape
+            model_shape = model.inputs[0].shape
             console.log('model input shape', model_shape)
             test_input = tf.randomNormal([1, model_shape[1], model_shape[2], model_shape[3]])
         })
@@ -49,10 +52,51 @@
         // img.crossOrigin = "Anonymous";
         ctx.drawImage(img, 0, 0, c.height, c.width);
 
-        // create matrix of images
-        const canvas_shape = [500, 500]
-        var data = ctx.getImageData(0, 0, 50, 50)
-        var frame_tensor = tf.browser.fromPixels(data)
+        function create_image_matrix() {
+
+            // create matrix of images
+            const canvas_shape = [500, 500]
+            const frame_shape = [50, 50]
+            const stride = 50
+
+
+            const image_columns = parseInt(canvas_shape[0] / stride)
+            const image_rows = parseInt(canvas_shape[1] / stride)
+
+            const total_frames = image_columns * image_rows
+
+            const frames_buffer = tf.buffer([total_frames, ...frame_shape, 3])
+
+            // const frames = tf.zeros([total_frames, ...frame_shape, 3])
+
+            console.log('frames shape', frames_buffer.shape)
+
+            var count = 0
+            for (let i = 0; i < image_columns; i++) {
+
+                for (let j = 0; j < image_rows; j++) {
+
+                    const data = ctx.getImageData(i * stride, j * stride, ...frame_shape)
+                    const frame_tensor = tf.browser.fromPixels(data)
+                    frames_buffer[count] = frame_tensor
+
+                }
+                count++
+            }
+
+            const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
+
+            
+
+            // output_tensor.print()
+
+            const comparision_vector = tf.randomNormal([256])
+
+            const prediction = model.predict(output_tensor)
+            console.log(prediction)
+
+            return output_tensor
+        }
 
 
 
