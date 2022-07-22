@@ -165,6 +165,7 @@
 
 
                     raw_tensors.push(frame_tensor)
+                    console.log(i*image_rows+j,frame_tensor.shape, frame_tensor.sum().dataSync()[0])
                     // confirm that all frames ar different
                     // console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
                     // console.log('simgle fraem check sum', frame_tensor.sum().dataSync())
@@ -179,6 +180,13 @@
 
 
             raw_frames = tf.stack(raw_tensors)
+
+            const check_sum = raw_frames.sum([1,2,3]).dataSync()
+
+            for (let index = 0; index < check_sum.length; index++) {
+                console.log('check sum delta befor enad after stack',index, raw_tensors[index].sum().dataSync()[0] - check_sum[index])
+            }
+
             // raw_frames = tf.concat(raw_tensors)
 
             output_tensor = tf.image.resizeBilinear(raw_frames, [model_shape[1], model_shape[2]])
