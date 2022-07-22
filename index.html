@@ -9,6 +9,8 @@
 
         canvas {
             border: red solid 2px;
+            height:500px;
+            width:500px;
         }
     </style>
 
@@ -23,6 +25,7 @@
     <img id="image" src="test_image.png">
 
     <canvas id="canvas" height="500" width="500"></canvas>
+    <canvas id="output_canvas" height="10" width="10"></canvas>
 
     <button onclick="create_image_matrix()">create matrix plane </button>
 
@@ -71,14 +74,14 @@
 
             // console.log('frames shape', frames_buffer.shape)
 
-            var _prev = tf.zeros([50,50,3])
+            var _prev = tf.zeros([50, 50, 3])
             var tensors = []
             for (let i = 0; i < image_columns; i++) {
 
                 for (let j = 0; j < image_rows; j++) {
 
                     const data = ctx.getImageData(i * stride, j * stride, ...frame_shape)
-                    const frame_tensor = tf.browser.fromPixels(data)
+                    const frame_tensor = tf.browser.fromPixels(data).div(255.)
                     tensors.push(frame_tensor)
                     // confirm that all frames ar different
                     console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
@@ -89,12 +92,12 @@
                     _prev = frame_tensor
                     // count++
                 }
-                
+
             }
 
-            
+
             const frames = tf.stack(tensors)
-            const output_tensor = tf.image.resizeBilinear(frames, [model_shape[1], model_shape[2]] )
+            const output_tensor = tf.image.resizeBilinear(frames, [model_shape[1], model_shape[2]])
             // const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
 
             // console.log('frames bufer', frames_buffer.toTensor().sum().dataSync())
@@ -102,9 +105,9 @@
             const image_input_data = output_tensor.dataSync()
             console.log('see first 2 input image data')
             console.log(image_input_data.slice(0, 100))
-            console.log(image_input_data.slice(256*256*3, (256*256*3)+100))
+            console.log(image_input_data.slice(256 * 256 * 3, (256 * 256 * 3) + 100))
 
-            
+
 
             const comparision_vector = tf.ones([256])
 
@@ -123,23 +126,59 @@
 
             // // perform similarity map calucaltion
 
-            console.log('prediction 1' ,prediction.dataSync().slice(0, 30))
-            console.log('prediction 2' ,prediction.dataSync().slice(256, 256+30))
 
-            const dot_product = tf.dot(prediction, comparision_vector)
-            console.log(dot_product.dataSync())
+            function vector_similarity_score(truth_vector, vectors) {
+
+                // MAE
+                return vectors.sub(truth_vector).abs().mean(axis = 1)
+
+            }
+
+            console.log('prediction 1', prediction.dataSync().slice(0, 30))
+            console.log('prediction 2', prediction.dataSync().slice(256, 256 + 30))
+
+            // const dot_product = tf.dot(prediction, comparision_vector)
+            // console.log(dot_product.dataSync())
             // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
             // const cosine_distance = dot_product.div(abs_product)
             // console.log(cosine_distance)
 
-            // const similarity_map = cosine_distance.reshape([image_columns, image_rows])
-
-            // console.log('sim map', similarity_map.dataSync())
+            const similarty_score = vector_similarity_score(comparision_vector, prediction)
 
 
+            const similarity_map = similarty_score.reshape([image_columns, image_rows])
+
+            
+
+            function draw_similarity_map(sim_map) {
+
+                var c2 = document.getElementById("output_canvas");
+                var ctx2 = c2.getContext("2d");
+
+                var new_image = ctx2.createImageData(10, 10); // only do this once per page
+                var image_data = new_image.data;
+                for (let index = 0; index < 100; index++) {
+
+                    const offset = index*4
+
+                    image_data[offset] = sim_map[index]*255;
+                    image_data[offset+1] = sim_map[index]*255;
+                    image_data[offset+2] = sim_map[index]*255;
+                    image_data[offset+3] = 255;
+                }
+                // var d = id.data;
+
+                ctx2.putImageData(new_image, 0, 0);
 
             return output_tensor
+
+            }
+
+            draw_similarity_map(similarity_map.dataSync())
         }
+
+
+
 
 
 
