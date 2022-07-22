@@ -58,6 +58,10 @@
 
         var output_tensor
 
+        var raw_tensors
+
+        var raw_frames
+
         var base_vector
 
         var kernal_canvas = document.getElementById("kernal_canvas")
@@ -145,22 +149,22 @@
             // console.log('frames shape', frames_buffer.shape)
 
             // var _prev = tf.zeros([50, 50, 3])
-            var tensors = []
+            raw_tensors = []
             for (let i = 0; i < image_columns; i++) {
 
                 for (let j = 0; j < image_rows; j++) {
 
-                    const data = ctx.getImageData(j * stride, i * stride, ...frame_shape)
+                    let data = ctx.getImageData(j * stride, i * stride, ...frame_shape)
 
 
 
                     render_kernal_image(data)
 
                     // sleep(50)
-                    const frame_tensor = tf.browser.fromPixels(data)
+                    let frame_tensor = tf.browser.fromPixels(data)
 
 
-                    tensors.push(frame_tensor)
+                    raw_tensors.push(frame_tensor)
                     // confirm that all frames ar different
                     // console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
                     // console.log('simgle fraem check sum', frame_tensor.sum().dataSync())
@@ -174,9 +178,10 @@
             }
 
 
-            const frames = tf.stack(tensors)
+            raw_frames = tf.stack(raw_tensors)
+            // raw_frames = tf.concat(raw_tensors)
 
-            output_tensor = tf.image.resizeBilinear(frames, [model_shape[1], model_shape[2]])
+            output_tensor = tf.image.resizeBilinear(raw_frames, [model_shape[1], model_shape[2]])
             // const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
 
             // console.log('frames bufer', frames_buffer.toTensor().sum().dataSync())
@@ -270,7 +275,8 @@
 
         function draw_pixels_to_canvas(images_tensor, index) {
 
-            const single_image =  images_tensor.slice([index, 0,0,0 ], [1,128,128,3]).reshape([128,128,3]).div(255.)
+            const single_image =  images_tensor.slice([index, 0,0,0 ], 
+            [1,images_tensor.shape[1],images_tensor.shape[2],3]).reshape([images_tensor.shape[1],images_tensor.shape[2],3]).div(255.)
 
 
             // tf.image.resizeBilinear(
