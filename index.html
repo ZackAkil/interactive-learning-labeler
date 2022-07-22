@@ -4,7 +4,9 @@
 
     <style>
         img {
-            height: 500px
+            height: 500px;
+            border: blue solid 2px;
+            image-rendering: pixelated;
         }
 
         canvas {
@@ -23,7 +25,7 @@
 
 <body>
 
-    <img id="image" src="test_image.png">
+    <img id="image" src="pexels-pixmike-413195.jpg">
 
     <canvas id="canvas" height="500" width="500"></canvas>
     <canvas id="kernal_canvas" height="50" width="50"></canvas>
@@ -54,7 +56,12 @@
         var test_input
         var model_shape
 
+        var output_tensor
+
         var base_vector
+
+        var kernal_canvas = document.getElementById("kernal_canvas")
+        var kernal_ctx = kernal_canvas.getContext("2d")
 
         tf.loadGraphModel("https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1", {
             fromTFHub: true
@@ -71,17 +78,16 @@
 
 
         async function render_kernal_image(image_data) {
-            var kernal_canvas = document.getElementById("kernal_canvas")
-            var kernal_ctx = kernal_canvas.getContext("2d")
+
             kernal_ctx.clearRect(0, 0, kernal_ctx.width, kernal_ctx.height)
             kernal_ctx.putImageData(image_data, 0, 0)
             kernal_ctx.stroke()
 
 
-            var img = new Image(); 
-            img.src = kernal_canvas.toDataURL(); 
+            var img = new Image();
+            img.src = kernal_canvas.toDataURL();
             document.body.appendChild(img)
-            
+
 
         }
 
@@ -93,8 +99,8 @@
 
             var kernal_image = ctx.getImageData(e.offsetX - 25, e.offsetY - 25, 50, 50)
 
-            
-            
+
+
             render_kernal_image(kernal_image)
 
             console.log(kernal_image)
@@ -126,7 +132,11 @@
             const image_columns = parseInt(canvas_shape[0] / stride)
             const image_rows = parseInt(canvas_shape[1] / stride)
 
+
+
             const total_frames = image_columns * image_rows
+
+            console.log('frame dims', image_columns, image_rows, total_frames)
 
             // const frames_buffer = tf.buffer([total_frames, ...frame_shape, 3])
 
@@ -134,7 +144,7 @@
 
             // console.log('frames shape', frames_buffer.shape)
 
-            var _prev = tf.zeros([50, 50, 3])
+            // var _prev = tf.zeros([50, 50, 3])
             var tensors = []
             for (let i = 0; i < image_columns; i++) {
 
@@ -147,17 +157,17 @@
                     render_kernal_image(data)
 
                     // sleep(50)
-
-
                     const frame_tensor = tf.browser.fromPixels(data)
+
+
                     tensors.push(frame_tensor)
                     // confirm that all frames ar different
-                    console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
-                    console.log('simgle fraem check sum', frame_tensor.sum().dataSync())
+                    // console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
+                    // console.log('simgle fraem check sum', frame_tensor.sum().dataSync())
 
                     // frames_buffer.set(frame_tensor, count,  )
 
-                    _prev = frame_tensor
+                    // _prev = frame_tensor
                     // count++
                 }
 
@@ -165,7 +175,8 @@
 
 
             const frames = tf.stack(tensors)
-            const output_tensor = tf.image.resizeBilinear(frames, [model_shape[1], model_shape[2]])
+
+            output_tensor = tf.image.resizeBilinear(frames, [model_shape[1], model_shape[2]])
             // const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
 
             // console.log('frames bufer', frames_buffer.toTensor().sum().dataSync())
@@ -201,35 +212,17 @@
                 // return vectors.sub(truth_vector).abs().mean(axis = 1)
 
                 // cosine
-                // const dot_product = tf.dot(vectors, truth_vector.reshape([256]) )
-                // console.log(dot_product.dataSync())
-                // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
-                // const cosine_distance = dot_product.div(abs_product)
-                // console.log('cos dist', cosine_distance.dataSync())
-                // return cosine_distance
-
-                // const cosine_distance =tf.losses.cosineDistance(tf.broadcastTo (truth_vector, [100,256]) , vectors)
-                // console.log('cos dist', cosine_distance.dataSync())
-                // return cosine_distance
-
-
-
-                // cosine
                 const dot_product = tf.dot(vectors, truth_vector.reshape([256]))
-
                 const x_length = tf.euclideanNorm(vectors, axis = 1)
                 const y_length = truth_vector.euclideanNorm()
+
                 console.log(dot_product.shape, x_length.shape, y_length.shape)
+
                 const cosine_distance = dot_product.div((x_length.mul(y_length)))
-                // console.log(dot_product.dataSync())
-                // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
-                // const cosine_distance = dot_product.div(abs_product)
+
                 console.log('cos dist', cosine_distance.dataSync())
+
                 return cosine_distance
-
-
-
-
             }
 
             console.log('prediction 1', prediction.dataSync().slice(0, 30))
@@ -240,7 +233,7 @@
             const similarty_score = vector_similarity_score(comparision_vector, prediction)
 
 
-            const similarity_map = similarty_score.reshape([image_columns, image_rows])
+            // const similarity_map = similarty_score.reshape([image_columns, image_rows])
 
 
 
@@ -267,10 +260,27 @@
                 ctx2.putImageData(new_image, 0, 0);
 
                 return output_tensor
-
             }
 
-            draw_similarity_map(similarity_map.dataSync())
+            console.log(similarty_score.dataSync())
+
+            draw_similarity_map(similarty_score.dataSync())
+        }
+
+
+        function draw_pixels_to_canvas(images_tensor, index) {
+
+            const single_image =  images_tensor.slice([index, 0,0,0 ], [1,128,128,3]).reshape([128,128,3]).div(255.)
+
+
+            // tf.image.resizeBilinear(
+            //         tf.browser.fromPixels(kernal_canvas),
+            //         [model_shape[1], model_shape[2]]
+            //     )
+
+            // 128, 128
+
+            tf.browser.toPixels(single_image, kernal_canvas)
         }
 
 
