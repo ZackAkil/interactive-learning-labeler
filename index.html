@@ -32,11 +32,24 @@
 
     <button onclick="create_image_matrix()">create matrix plane </button>
 
+    <br>
+
 
 
 
 
     <script>
+
+        function sleep(milliseconds) {
+            var start = new Date().getTime();
+            for (var i = 0; i < 1e7; i++) {
+                if ((new Date().getTime() - start) > milliseconds) {
+                    break;
+                }
+            }
+        }
+
+
         var model
         var test_input
         var model_shape
@@ -56,17 +69,37 @@
         // render image to canvas
         var c = document.getElementById("canvas");
 
+
+        async function render_kernal_image(image_data) {
+            var kernal_canvas = document.getElementById("kernal_canvas")
+            var kernal_ctx = kernal_canvas.getContext("2d")
+            kernal_ctx.clearRect(0, 0, kernal_ctx.width, kernal_ctx.height)
+            kernal_ctx.putImageData(image_data, 0, 0)
+            kernal_ctx.stroke()
+
+
+            var img = new Image(); 
+            img.src = kernal_canvas.toDataURL(); 
+            document.body.appendChild(img)
+            
+
+        }
+
+
         c.addEventListener('click', (e) => {
             console.log(e, e.offsetX, e.offsetY)
 
-            var kernal_canvas = document.getElementById("kernal_canvas");
-            var kernal_ctx = kernal_canvas.getContext("2d");
+
 
             var kernal_image = ctx.getImageData(e.offsetX - 25, e.offsetY - 25, 50, 50)
 
+            
+            
+            render_kernal_image(kernal_image)
+
             console.log(kernal_image)
 
-            kernal_ctx.putImageData(kernal_image, 0, 0)
+
 
             base_vector = model.predict(
                 tf.image.resizeBilinear(
@@ -74,8 +107,6 @@
                     [model_shape[1], model_shape[2]]
                 ).expandDims()
             )
-
-
         })
 
 
@@ -109,12 +140,20 @@
 
                 for (let j = 0; j < image_rows; j++) {
 
-                    const data = ctx.getImageData(i * stride, j * stride, ...frame_shape)
+                    const data = ctx.getImageData(j * stride, i * stride, ...frame_shape)
+
+
+
+                    render_kernal_image(data)
+
+                    // sleep(50)
+
+
                     const frame_tensor = tf.browser.fromPixels(data)
                     tensors.push(frame_tensor)
                     // confirm that all frames ar different
                     console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
-                    console.log('simgle fraem chekc sum', frame_tensor.sum().dataSync())
+                    console.log('simgle fraem check sum', frame_tensor.sum().dataSync())
 
                     // frames_buffer.set(frame_tensor, count,  )
 
@@ -176,14 +215,12 @@
 
 
                 // cosine
-                const dot_product = tf.dot(vectors, truth_vector.reshape([256]) )
+                const dot_product = tf.dot(vectors, truth_vector.reshape([256]))
 
-                const x_length = tf.euclideanNorm(  vectors, axis=1)
+                const x_length = tf.euclideanNorm(vectors, axis = 1)
                 const y_length = truth_vector.euclideanNorm()
-
                 console.log(dot_product.shape, x_length.shape, y_length.shape)
-
-                const cosine_distance = dot_product.div( (x_length.mul(y_length)))
+                const cosine_distance = dot_product.div((x_length.mul(y_length)))
                 // console.log(dot_product.dataSync())
                 // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
                 // const cosine_distance = dot_product.div(abs_product)
@@ -218,9 +255,9 @@
 
                     const offset = index * 4
 
-                    image_data[offset] = sim_map[index] *255;
-                    image_data[offset + 1] = sim_map[index] *255;
-                    image_data[offset + 2] = sim_map[index] *255;
+                    image_data[offset] = sim_map[index] * 255;
+                    image_data[offset + 1] = sim_map[index] * 255;
+                    image_data[offset + 2] = sim_map[index] * 255;
                     image_data[offset + 3] = 255;
                 }
                 // var d = id.data;
