@@ -9,8 +9,8 @@
 
         canvas {
             border: red solid 2px;
-            height:500px;
-            width:500px;
+            height: 500px;
+            width: 500px;
             image-rendering: pixelated;
         }
     </style>
@@ -26,7 +26,9 @@
     <img id="image" src="test_image.png">
 
     <canvas id="canvas" height="500" width="500"></canvas>
+    <canvas id="kernal_canvas" height="50" width="50"></canvas>
     <canvas id="output_canvas" height="10" width="10"></canvas>
+
 
     <button onclick="create_image_matrix()">create matrix plane </button>
 
@@ -38,6 +40,8 @@
         var model
         var test_input
         var model_shape
+
+        var base_vector
 
         tf.loadGraphModel("https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1", {
             fromTFHub: true
@@ -51,6 +55,30 @@
 
         // render image to canvas
         var c = document.getElementById("canvas");
+
+        c.addEventListener('click', (e) => {
+            console.log(e, e.offsetX, e.offsetY)
+
+            var kernal_canvas = document.getElementById("kernal_canvas");
+            var kernal_ctx = kernal_canvas.getContext("2d");
+
+            var kernal_image = ctx.getImageData(e.offsetX - 25, e.offsetY - 25, 50, 50)
+
+            console.log(kernal_image)
+
+            kernal_ctx.putImageData(kernal_image, 0, 0)
+
+            base_vector = model.predict(
+                tf.image.resizeBilinear(
+                    tf.browser.fromPixels(kernal_canvas),
+                    [model_shape[1], model_shape[2]]
+                ).expandDims()
+            )
+
+
+        })
+
+
         var ctx = c.getContext("2d");
         var img = document.getElementById("image");
         // img.crossOrigin = "Anonymous";
@@ -82,7 +110,7 @@
                 for (let j = 0; j < image_rows; j++) {
 
                     const data = ctx.getImageData(i * stride, j * stride, ...frame_shape)
-                    const frame_tensor = tf.browser.fromPixels(data).div(255.)
+                    const frame_tensor = tf.browser.fromPixels(data)
                     tensors.push(frame_tensor)
                     // confirm that all frames ar different
                     console.log(tf.losses.absoluteDifference(frame_tensor, _prev).dataSync())
@@ -110,7 +138,7 @@
 
 
 
-            const comparision_vector = tf.ones([256])
+            const comparision_vector = base_vector    //tf.ones([256])
 
             console.log('comp vector', comparision_vector.dataSync())
 
@@ -149,7 +177,7 @@
 
             const similarity_map = similarty_score.reshape([image_columns, image_rows])
 
-            
+
 
             function draw_similarity_map(sim_map) {
 
@@ -160,18 +188,18 @@
                 var image_data = new_image.data;
                 for (let index = 0; index < 100; index++) {
 
-                    const offset = index*4
+                    const offset = index * 4
 
-                    image_data[offset] = sim_map[index]*255;
-                    image_data[offset+1] = sim_map[index]*255;
-                    image_data[offset+2] = sim_map[index]*255;
-                    image_data[offset+3] = 255;
+                    image_data[offset] = sim_map[index] * 255;
+                    image_data[offset + 1] = sim_map[index] * 255;
+                    image_data[offset + 2] = sim_map[index] * 255;
+                    image_data[offset + 3] = 255;
                 }
                 // var d = id.data;
 
                 ctx2.putImageData(new_image, 0, 0);
 
-            return output_tensor
+                return output_tensor
 
             }
 
