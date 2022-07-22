@@ -16,7 +16,7 @@
     </style>
 
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.0.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
 </head>
 
 
@@ -159,18 +159,46 @@
             function vector_similarity_score(truth_vector, vectors) {
 
                 // MAE
-                return vectors.sub(truth_vector).abs().mean(axis = 1)
+                // return vectors.sub(truth_vector).abs().mean(axis = 1)
+
+                // cosine
+                // const dot_product = tf.dot(vectors, truth_vector.reshape([256]) )
+                // console.log(dot_product.dataSync())
+                // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
+                // const cosine_distance = dot_product.div(abs_product)
+                // console.log('cos dist', cosine_distance.dataSync())
+                // return cosine_distance
+
+                // const cosine_distance =tf.losses.cosineDistance(tf.broadcastTo (truth_vector, [100,256]) , vectors)
+                // console.log('cos dist', cosine_distance.dataSync())
+                // return cosine_distance
+
+
+
+                // cosine
+                const dot_product = tf.dot(vectors, truth_vector.reshape([256]) )
+
+                const x_length = tf.euclideanNorm(  vectors, axis=1)
+                const y_length = truth_vector.euclideanNorm()
+
+                console.log(dot_product.shape, x_length.shape, y_length.shape)
+
+                const cosine_distance = dot_product.div( (x_length.mul(y_length)))
+                // console.log(dot_product.dataSync())
+                // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
+                // const cosine_distance = dot_product.div(abs_product)
+                console.log('cos dist', cosine_distance.dataSync())
+                return cosine_distance
+
+
+
 
             }
 
             console.log('prediction 1', prediction.dataSync().slice(0, 30))
             console.log('prediction 2', prediction.dataSync().slice(256, 256 + 30))
 
-            // const dot_product = tf.dot(prediction, comparision_vector)
-            // console.log(dot_product.dataSync())
-            // const abs_product =  (prediction.abs().sum(axis=1)).mul( comparision_vector.abs().sum())
-            // const cosine_distance = dot_product.div(abs_product)
-            // console.log(cosine_distance)
+
 
             const similarty_score = vector_similarity_score(comparision_vector, prediction)
 
@@ -190,12 +218,14 @@
 
                     const offset = index * 4
 
-                    image_data[offset] = sim_map[index] * 255;
-                    image_data[offset + 1] = sim_map[index] * 255;
-                    image_data[offset + 2] = sim_map[index] * 255;
+                    image_data[offset] = sim_map[index] *255;
+                    image_data[offset + 1] = sim_map[index] *255;
+                    image_data[offset + 2] = sim_map[index] *255;
                     image_data[offset + 3] = 255;
                 }
                 // var d = id.data;
+
+                console.log(new_image)
 
                 ctx2.putImageData(new_image, 0, 0);
 
