@@ -8,7 +8,7 @@
             border: blue solid 2px;
             image-rendering: pixelated;
         }
-
+        
         canvas {
             border: red solid 2px;
             height: 500px;
@@ -25,9 +25,10 @@
 
 <body>
 
-    <img id="image" src="pexels-pixmike-413195.jpg">
+    <img id="image" src="road.jpeg">
 
     <canvas id="canvas" height="500" width="500"></canvas>
+    <canvas id="drawing_canvas" height="500" width="500"></canvas>
     <canvas id="kernal_canvas" height="50" width="50"></canvas>
     <canvas id="output_canvas" height="10" width="10"></canvas>
 
@@ -41,7 +42,6 @@
 
 
     <script>
-
         function sleep(milliseconds) {
             var start = new Date().getTime();
             for (var i = 0; i < 1e7; i++) {
@@ -69,7 +69,7 @@
 
         tf.loadGraphModel("https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1", {
             fromTFHub: true
-        }).then(function (m) {
+        }).then(function(m) {
             console.log('loaded model')
             model = m
             model_shape = model.inputs[0].shape
@@ -113,8 +113,7 @@
 
             base_vector = model.predict(
                 tf.image.resizeBilinear(
-                    tf.browser.fromPixels(kernal_canvas),
-                    [model_shape[1], model_shape[2]]
+                    tf.browser.fromPixels(kernal_canvas), [model_shape[1], model_shape[2]]
                 ).expandDims()
             )
         })
@@ -192,11 +191,11 @@
             //     console.log('[_identical_images] check sum delta befor enad after stack',index, test_array_identical_images[index].sum().dataSync()[0] - check_sum_identical_images[index])
             // }
 
-            
+
 
 
             raw_frames = tf.stack(raw_tensors)
-            // raw_frames = tf.concat(raw_tensors).reshape([100,50,50,3])
+                // raw_frames = tf.concat(raw_tensors).reshape([100,50,50,3])
 
             // const check_sum = raw_frames.sum([1,2,3]).dataSync()
 
@@ -207,7 +206,7 @@
             // raw_frames = tf.concat(raw_tensors)
 
             output_tensor = tf.image.resizeBilinear(raw_frames, [model_shape[1], model_shape[2]])
-            // const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
+                // const output_tensor = tf.image.resizeBilinear(frames_buffer.toTensor(), [model_shape[1], model_shape[2]] )
 
             // console.log('frames bufer', frames_buffer.toTensor().sum().dataSync())
             console.log('ot check sum', output_tensor.sum().dataSync())
@@ -218,7 +217,7 @@
 
 
 
-            const comparision_vector = base_vector    //tf.ones([256])
+            const comparision_vector = base_vector //tf.ones([256])
 
             console.log('comp vector', comparision_vector.dataSync())
 
@@ -300,8 +299,7 @@
 
         function draw_pixels_to_canvas(images_tensor, index) {
 
-            const single_image =  images_tensor.slice([index, 0,0,0 ], 
-            [1,images_tensor.shape[1],images_tensor.shape[2],3]).reshape([images_tensor.shape[1],images_tensor.shape[2],3]).div(255.)
+            const single_image = images_tensor.slice([index, 0, 0, 0], [1, images_tensor.shape[1], images_tensor.shape[2], 3]).reshape([images_tensor.shape[1], images_tensor.shape[2], 3]).div(255.)
 
 
             // tf.image.resizeBilinear(
@@ -320,6 +318,104 @@
 
 
         // imput shape = [-1, 299, 299, 3]
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // get references to the canvas and context
+        var draw_canvas = document.getElementById("drawing_canvas");
+        var draw_ctx = draw_canvas.getContext("2d");
+
+        // style the context
+        ctx.strokeStyle = "blue";
+        ctx.lineWidth = 3;
+
+        // calculate where the canvas is on the window
+        // (used to help calculate mouseX/mouseY)
+        var $canvas = $("#canvas");
+        var canvasOffset = $canvas.offset();
+        var offsetX = canvasOffset.left;
+        var offsetY = canvasOffset.top;
+        var scrollX = $canvas.scrollLeft();
+        var scrollY = $canvas.scrollTop();
+
+        // this flage is true when the user is dragging the mouse
+        var isDown = false;
+
+        // these vars will hold the starting mouse position
+        var startX;
+        var startY;
+
+
+        function handleMouseDown(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // save the starting x/y of the rectangle
+            startX = parseInt(e.clientX - offsetX);
+            startY = parseInt(e.clientY - offsetY);
+
+            // set a flag indicating the drag has begun
+            isDown = true;
+        }
+
+        function handleMouseUp(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // the drag is over, clear the dragging flag
+            isDown = false;
+        }
+
+
+        function handleMouseMove(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // if we're not dragging, just return
+            if (!isDown) {
+                return;
+            }
+
+            // get the current mouse position
+            mouseX = parseInt(e.clientX - offsetX);
+            mouseY = parseInt(e.clientY - offsetY);
+
+            // Put your mousemove stuff here
+
+            // clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // calculate the rectangle width/height based
+            // on starting vs current mouse position
+            var width = mouseX - startX;
+            var height = mouseY - startY;
+
+            // draw a new rect from the start position 
+            // to the current mouse position
+            ctx.strokeRect(startX, startY, width, height);
+
+        }
+
+        // listen for mouse events
+        $("#canvas").mousedown(function(e) {
+            handleMouseDown(e);
+        });
+        $("#canvas").mousemove(function(e) {
+            handleMouseMove(e);
+        });
+        $("#canvas").mouseup(function(e) {
+            handleMouseUp(e);
+        });
     </script>
 
 </body>
