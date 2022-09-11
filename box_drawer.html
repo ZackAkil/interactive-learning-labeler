@@ -98,15 +98,20 @@
                 const width = e.offsetX - this.current_drawing_box.x - BOUNDING_BOX_BORDER_WIDTH
                 const height = e.offsetY - this.current_drawing_box.y - BOUNDING_BOX_BORDER_WIDTH
 
-                const image_data = this.ctx.getImageData(this.current_drawing_box.x + BOUNDING_BOX_BORDER_WIDTH,
-                    this.current_drawing_box.y + BOUNDING_BOX_BORDER_WIDTH, width, height)
+                // if box has real width or height (not just clicking on screen)
+                if ((width > 0) && (height > 0)) {
 
-                this.boxes.push({
-                    ...this.current_drawing_box,
-                    height: height,
-                    width: width,
-                    image_data: imagedata_to_imageurl(image_data)
-                })
+                    const image_data = this.ctx.getImageData(this.current_drawing_box.x + BOUNDING_BOX_BORDER_WIDTH,
+                        this.current_drawing_box.y + BOUNDING_BOX_BORDER_WIDTH, width, height)
+
+                    this.boxes.push({
+                        ...this.current_drawing_box,
+                        height: height,
+                        width: width,
+                        image_data: imagedata_to_imageurl(image_data)
+                    })
+                }
+
                 this.current_drawing_box = null
             },
 
