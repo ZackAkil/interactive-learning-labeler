@@ -5,10 +5,11 @@
 
     <style>
         #box_drawer {
-            height: 500px;
-            width: 500px;
+            /* height: 500px;
+            width: 500px; */
             border: red dashed 5px;
             position: relative;
+            display: inline-block;
         }
 
         .box {
@@ -45,6 +46,7 @@
             <div id="current_drawing_box" v-if="current_drawing_box != null"
                 :style="{ 'left': current_drawing_box.x + 'px' , 'top': current_drawing_box.y + 'px',  'width': current_drawing_box.width + 'px' , 'height': current_drawing_box.height + 'px'}">
             </div>
+            <canvas id="canvas" height="800" width="800"></canvas>
         </div>
 
         <div>
@@ -89,13 +91,30 @@
                 this.boxes.push({ ...this.current_drawing_box, height: height, width: width })
                 this.current_drawing_box = null
             },
-            
+
             remove_box: function (box) {
                 const id = this.boxes.indexOf(box)
                 this.boxes.splice(id, 1);
             }
+        },
+        mounted: function () {
+            console.log('mounted')
+
+            var canvas = document.getElementById("canvas")
+            var ctx = canvas.getContext("2d")
+
+            var img = new Image;
+            img.onload = function () {
+                ctx.drawImage(img, 0, 0, 800, 800); 
+            };
+            img.src = "road.jpeg";
+
         }
     }).mount('#app')
+
+
+
+
 </script>
 
 </html>
