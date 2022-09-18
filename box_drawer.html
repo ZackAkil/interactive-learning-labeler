@@ -20,8 +20,30 @@
 
         .box_preview {
             height: 40px;
+            max-width: 200px;
+        }
+
+
+        #tile_guide_drawer {
+            opacity: 0.8;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            border: rgb(0, 255, 51) solid 5px;
+            display: inline-block;
+        }
+
+        .tile {
+            position: absolute;
+            border: rgb(174, 0, 255) solid 1px;
+            background-color: orange;
+            display: inline-block;
         }
     </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+
+    <script src="one_shot_object_detection.js"></script>
 
     <script src="https://unpkg.com/vue@3"></script>
 
@@ -33,13 +55,28 @@
         <h1>Box drawer sandbox</h1>
 
         <div id="box_drawer" @mousedown="mouseDown" @mouseup="mouseUp" @mousemove="mouseMove">
+
+            <!-- all bouding boxes -->
             <div class="box" v-for="box in boxes"
                 :style="{ 'left': box.x + 'px' , 'top': box.y + 'px', 'width': box.width + 'px' , 'height': box.height + 'px'}">
             </div>
+
+            <!-- currently drawing bouding box -->
             <div id="current_drawing_box" class="box" v-if="current_drawing_box != null"
                 :style="{ 'left': current_drawing_box.x + 'px' , 'top': current_drawing_box.y + 'px',  'width': current_drawing_box.width + 'px' , 'height': current_drawing_box.height + 'px'}">
             </div>
+
+            <!-- canvas to draw image on -->
             <canvas id="canvas" height="800" width="800"></canvas>
+
+            <!-- visuliserf or the tiles that the image is being split up into -->
+            <div id="tile_guide_drawer">
+                <div class="tile" v-for="tile in tiles" 
+                :style="{ 'left': tile.x + 'px' , 'top': tile.y + 'px', 'width': tile.width + 'px' , 'height': tile.height + 'px'}">
+                    {{tile.x}} - {{tile.y}} - {{tile.width}} - {{tile.height}}
+                </div>
+            </div>
+
         </div>
 
         <div>
@@ -47,6 +84,21 @@
                 x:{{box.x}} y:{{box.y}} width:{{box.width}} height:{{box.height}} <button
                     @click="remove_box(box)">remove</button>
                 <img class="box_preview" v-bind:src="box.image_data">
+                <button @click="generate_image_tiles(box)">generate image tiles</button>
+            </p>
+        </div>
+
+        <div>
+            <h2>One-shot-Object-Detection configs</h2>
+            <p>
+                <label>Model url </label>
+                <input type="text" v-model="model_url" />
+            </p>
+            <p>
+                <button @click="load_model">Load model</button>
+            </p>
+            <p>
+                <button>Run similarity match</button>
             </p>
         </div>
     </div>
@@ -63,7 +115,9 @@
             return {
                 boxes: [],
                 current_drawing_box: null,
-                ctx: null
+                ctx: null,
+                model_url: "https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1",
+                tiles: []
             }
         },
         methods: {
@@ -111,6 +165,19 @@
             remove_box: function (box) {
                 const id = this.boxes.indexOf(box)
                 this.boxes.splice(id, 1)
+            },
+
+            load_model: function () {
+                // alert('load model' + this.model_url)
+                load_remote_model(this.model_url)
+            },
+
+            generate_image_tiles: function (box) {
+                console.log('generating tiles with ', box)
+                const image_dims = [this.ctx.canvas.width, this.ctx.canvas.height]
+                const tiles = generate_tiles(image_dims, box)
+                console.log(tiles)
+                this.tiles = tiles
             }
         },
         mounted: function () {
