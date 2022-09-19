@@ -38,6 +38,11 @@
             border: rgb(174, 0, 255) solid 1px;
             background-color: orange;
             display: inline-block;
+            opacity: 0.5;
+        }
+
+        .tile:hover {
+            opacity: 1;
         }
     </style>
 
@@ -71,8 +76,8 @@
 
             <!-- visuliserf or the tiles that the image is being split up into -->
             <div id="tile_guide_drawer">
-                <div class="tile" v-for="tile in tiles" 
-                :style="{ 'left': tile.x + 'px' , 'top': tile.y + 'px', 'width': tile.width + 'px' , 'height': tile.height + 'px'}">
+                <div class="tile" v-for="tile in tile_dims"
+                    :style="{ 'left': tile.x + 'px' , 'top': tile.y + 'px', 'width': tile.width + 'px' , 'height': tile.height + 'px'}">
                     {{tile.x}} - {{tile.y}} - {{tile.width}} - {{tile.height}}
                 </div>
             </div>
@@ -98,7 +103,7 @@
                 <button @click="load_model">Load model</button>
             </p>
             <p>
-                <button>Run similarity match</button>
+                <button @click="run_similarity_convolution">Run similarity convolution</button>
             </p>
         </div>
     </div>
@@ -112,12 +117,16 @@
 
     const app = Vue.createApp({
         data() {
+
+            this.model = null
+            this.tile_data = null
+            this.ctx = null
+
             return {
                 boxes: [],
                 current_drawing_box: null,
-                ctx: null,
                 model_url: "https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1",
-                tiles: []
+                tile_dims: []
             }
         },
         methods: {
@@ -131,7 +140,7 @@
             },
 
             mouseMove: function (e) {
-                console.log('move')
+                // console.log('move')
                 if (this.current_drawing_box) {
                     this.current_drawing_box.width = e.offsetX - this.current_drawing_box.x - BOUNDING_BOX_BORDER_WIDTH
                     this.current_drawing_box.height = e.offsetY - this.current_drawing_box.y - BOUNDING_BOX_BORDER_WIDTH
@@ -169,15 +178,27 @@
 
             load_model: function () {
                 // alert('load model' + this.model_url)
-                load_remote_model(this.model_url)
+                load_remote_model(this.model_url, function (model) {
+                    app.model =  model
+                })
             },
 
             generate_image_tiles: function (box) {
                 console.log('generating tiles with ', box)
                 const image_dims = [this.ctx.canvas.width, this.ctx.canvas.height]
-                const tiles = generate_tiles(image_dims, box)
-                console.log(tiles)
-                this.tiles = tiles
+                this.tile_dims = generate_tiles_dimensions(image_dims, box,)
+                this.tile_data = get_tile_data(this.tile_dims, this.ctx, this.model.inputs[0].shape)
+                console.log(this.tile_data)
+            },
+
+
+            run_similarity_convolution: function () {
+                console.log("running similarity convolution")
+
+                const tiles_embeddings = Vue.toRaw(this.model).predict(this.tile_data)
+
+                console.log(tiles_embeddings)
+
             }
         },
         mounted: function () {

@@ -2,32 +2,30 @@
 {/* <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script> */ }
 
 
-function load_remote_model(url) {
+function load_remote_model(url, callback) {
+    // load tf emedding model
 
     tf.loadGraphModel(url, {
         fromTFHub: true
-    }).then(function (m) {
+    }).then(function (model) {
         console.log('loaded model')
-        model = m
         model_shape = model.inputs[0].shape
         console.log('model input shape', model_shape)
-        test_input = tf.randomNormal([1, model_shape[1], model_shape[2], model_shape[3]])
+        callback(model)
     })
-
 }
 
 
-function generate_tiles(image_dims, box, stride = null) {
+function generate_tiles_dimensions(image_dims, box, stride = null) {
+    // generate the dimmension of the window sliding tiles
 
     const canvas_shape = image_dims
 
     if (stride == null)
-        stride = { width: box.width, height: box.height }
+        stride = { width: parseInt(box.width * 0.75), height: parseInt(box.height * 0.75) }
 
     const image_columns = parseInt(canvas_shape[0] / stride.width)
     const image_rows = parseInt(canvas_shape[1] / stride.height)
-
-    // const total_frames = image_columns * image_rows
 
     const tile_dims = []
 
@@ -41,48 +39,26 @@ function generate_tiles(image_dims, box, stride = null) {
             })
         }
     }
-
     return tile_dims
 }
 
 
-function image_to_tf_matrix() {
+function get_tile_data(tile_dims, ctx, model_shape) {
+    // get the actual data from the image given the tile dims
 
-}
+    const tile_tensors = []
 
+    tile_dims.forEach(dim => {
+        let data = ctx.getImageData(dim.x, dim.y, dim.width, dim.height)
+        let frame_tensor = tf.browser.fromPixels(data)
+        tile_tensors.push(frame_tensor)
+    })
 
-function image_matrix_tile_extract() {
-
-    // create matrix of images
-    const canvas_shape = [500, 500]
-    const frame_shape = [50, 50]
-    const stride = 50
-
-    const image_columns = parseInt(canvas_shape[0] / stride)
-    const image_rows = parseInt(canvas_shape[1] / stride)
-
-    const total_frames = image_columns * image_rows
-    console.log('frame dims', image_columns, image_rows, total_frames)
-
-
-    raw_tensors = []
-
-    for (let i = 0; i < image_columns; i++) {
-
-        for (let j = 0; j < image_rows; j++) {
-
-            let data = ctx.getImageData(j * stride, i * stride, ...frame_shape)
-            let frame_tensor = tf.browser.fromPixels(data)
-            raw_tensors.push(frame_tensor)
-        }
-    }
-
-    raw_frames = tf.stack(raw_tensors)
-
-    output_tensor = tf.image.resizeBilinear(raw_frames, [model_shape[1], model_shape[2]])
-
+    const raw_frames = tf.stack(tile_tensors)
+    const output_tensor = tf.image.resizeBilinear(raw_frames, [model_shape[1], model_shape[2]])
     return output_tensor
 }
+
 
 function vector_similarity_score(truth_vector, vectors) {
 
