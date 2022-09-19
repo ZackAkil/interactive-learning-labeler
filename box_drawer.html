@@ -38,11 +38,8 @@
             border: rgb(174, 0, 255) solid 1px;
             background-color: orange;
             display: inline-block;
-            opacity: 0.5;
-        }
-
-        .tile:hover {
-            opacity: 1;
+            overflow-y: clip;
+            overflow-x: clip;
         }
     </style>
 
@@ -76,9 +73,10 @@
 
             <!-- visuliserf or the tiles that the image is being split up into -->
             <div id="tile_guide_drawer">
-                <div class="tile" v-for="tile in tile_dims"
-                    :style="{ 'left': tile.x + 'px' , 'top': tile.y + 'px', 'width': tile.width + 'px' , 'height': tile.height + 'px'}">
+                <div class="tile" v-for="(tile, index) in tile_dims"
+                    :style="{ 'left': tile.x + 'px' , 'top': tile.y + 'px', 'width': tile.width + 'px' , 'height': tile.height + 'px', 'opacity': similarity_scores ? similarity_scores[index]**score_expo : 0.9}">
                     {{tile.x}} - {{tile.y}} - {{tile.width}} - {{tile.height}}
+                    <b>{{similarity_scores ? similarity_scores[index] : ''}}</b>
                 </div>
             </div>
 
@@ -100,10 +98,13 @@
                 <input type="text" v-model="model_url" />
             </p>
             <p>
-                <button @click="load_model">Load model</button>
+                <button @click="load_model">Load model</button> <span v-if="model_loaded">✅</span>
             </p>
             <p>
                 <button @click="run_similarity_convolution">Run similarity convolution</button>
+            </p>
+            <p>
+                <input v-model="score_expo" type="range" min="1" max="50" value="2"> {{score_expo}}
             </p>
         </div>
     </div>
@@ -121,12 +122,16 @@
             this.model = null
             this.tile_data = null
             this.ctx = null
+            this.base_vector = null
 
             return {
                 boxes: [],
                 current_drawing_box: null,
                 model_url: "https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v1_025_128/feature_vector/1/default/1",
-                tile_dims: []
+                tile_dims: [],
+                model_loaded: false,
+                similarity_scores: null,
+                score_expo: 2
             }
         },
         methods: {
@@ -179,25 +184,42 @@
             load_model: function () {
                 // alert('load model' + this.model_url)
                 load_remote_model(this.model_url, function (model) {
-                    app.model =  model
+                    app.model = model
+                    app.model_loaded = true
                 })
             },
 
             generate_image_tiles: function (box) {
+
+                this.similarity_scores = null
                 console.log('generating tiles with ', box)
                 const image_dims = [this.ctx.canvas.width, this.ctx.canvas.height]
+                const model_shape = this.model.inputs[0].shape
                 this.tile_dims = generate_tiles_dimensions(image_dims, box,)
-                this.tile_data = get_tile_data(this.tile_dims, this.ctx, this.model.inputs[0].shape)
+                this.tile_data = get_tile_data(this.tile_dims, this.ctx, model_shape)
                 console.log(this.tile_data)
+
+                // set box as search embedding
+
+
+                this.base_vector = this.model.predict(
+                    tf.image.resizeBilinear(
+                        tensor_from_box_and_ctx(this.ctx, box), [model_shape[1], model_shape[2]]
+                    ).expandDims()
+                )
+                console.log('base vector', this.base_vector)
+
             },
 
 
             run_similarity_convolution: function () {
                 console.log("running similarity convolution")
 
-                const tiles_embeddings = Vue.toRaw(this.model).predict(this.tile_data)
+                const tiles_embeddings = this.model.predict(this.tile_data)
 
                 console.log(tiles_embeddings)
+
+                this.similarity_scores = vector_similarity_score(this.base_vector, tiles_embeddings)
 
             }
         },
@@ -216,6 +238,20 @@
 
         }
     }).mount('#app')
+
+
+    function tensor_from_box_and_ctx(current_ctx, box) {
+
+        const canvas = document.createElement('canvas')
+        canvas.width = box.width
+        canvas.height = box.height
+        const ctx = canvas.getContext("2d")
+
+        const image_data = current_ctx.getImageData(box.x, box.y, box.width, box.height)
+
+        ctx.putImageData(image_data, 0, 0)
+        return tf.browser.fromPixels(canvas)
+    }
 
 
 

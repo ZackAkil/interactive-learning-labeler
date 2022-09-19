@@ -72,9 +72,9 @@ function vector_similarity_score(truth_vector, vectors) {
 
     console.log(dot_product.shape, x_length.shape, y_length.shape)
 
-    const cosine_distance = dot_product.div((x_length.mul(y_length)))
+    const cosine_distance = dot_product.div((x_length.mul(y_length))).dataSync()
 
-    console.log('cos dist', cosine_distance.dataSync())
+    console.log('cos dist', cosine_distance)
 
     return cosine_distance
 }
